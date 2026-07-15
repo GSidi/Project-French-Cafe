@@ -3,7 +3,7 @@
 > **Status:** Living document. Captures the core idea and grows as the project expands.
 > Keep the core vision stable; append new detail under the relevant section rather than rewriting it.
 >
-> **Last updated:** 2026-07-14 (locked in tech stack: React+TS / FastAPI / PostgreSQL)
+> **Last updated:** 2026-07-15 (first-draft data model §11; anonymous-customer / stub-booking decision §3.3)
 
 ---
 
@@ -46,9 +46,20 @@ Customer → browses all venues, sees table availability
 - Generic layout for now — **not** a real per-café map yet. Refine later.
 
 ### 3.3 Availability & booking
-- Primary purpose: **see** availability (find a free spot).
-- **Booking is a later feature.** For v1, tapping a free table leads to a simple
-  **"Booked" placeholder screen** (a stub).
+- Primary purpose: **see** availability (find a free spot). **Anyone — including
+  anonymous, not-logged-in users — can browse all venues and see availability.**
+- **Booking is a later feature.** For v1, tapping a free table shows a simple
+  **✓ + small "Booked" confirmation** (a stub). Crucially, this stub **holds nothing**:
+  it does **not** change the table's status and does **not** reserve it. Two customers
+  can both tap the same free table and both walk over — exactly like the world works
+  today with no app. The atomic-claim machinery (§5) is still built and ready, just not
+  wired to a real hold yet.
+- **Real booking (holding a table) is gated behind having an account.** Rationale: a real
+  reservation is a *commitment against a scarce resource*; without an account there is no
+  accountability, and anonymous ghost-holds would make the map lie (the make-or-break risk,
+  §8.1). So: **everyone can see; only account-holders will (later) truly book.** In v1 nobody
+  truly books — the tap is a stub — so **v1 needs no customer accounts.** Staff/Admin still
+  log in.
 - Future options for real booking (decision deferred):
   - Redirect to the specific café's external booking site, **or**
   - Provide our **own** booking system (would need to be built).
@@ -197,8 +208,52 @@ Kept here to keep the vision ambitious without bloating v1.
 
 ---
 
-## 11. Open Questions / To Discuss
-- **Technology stack** — next topic.
+## 11. Data Model (v1)
+
+> First-draft entity design. Kept deliberately small, but each choice leaves room to expand.
+> **Concrete schema** (column types, keys, constraints, indexes) lives in **`DATA_MODEL.md`** —
+> keep the two in sync; this section is the *why*, that file is the *detail*.
+
+### Entities
+
+```
+Venue ──1:N── Table ──1:N── StatusEvent (append-only history)
+  │             │
+  │ N:M         │ 1:N
+  │             │
+User ─(StaffAssignment)      Claim (v1: a log of taps, holds nothing)
+```
+
+| Entity | Key fields | Notes |
+|---|---|---|
+| **Venue** | id, name, address, timezone, is_active | A cafeteria/bar. `timezone` matters for analytics (§8.3). |
+| **Table** | id, venue_id (FK), label, status, seats, pos_x, pos_y, updated_at | `status` = enum (v1: `FREE`/`OCCUPIED`). `pos_x/pos_y` = square floor-map position (§3.2). |
+| **StatusEvent** | id, table_id (FK), old_status, new_status, changed_by, source, created_at | **Append-only.** Written on every status change. Powers venue analytics + audit + future busyness prediction. |
+| **User** | id, email, role, hashed_pw, name | Roles: Admin / Staff. (No Customer accounts in v1 — customers are anonymous.) |
+| **StaffAssignment** | id, user_id (FK), venue_id (FK) | **Many-to-many** join: a staffer can cover multiple venues, a venue can have many staff. |
+| **Claim** | id, table_id (FK), created_at, status | v1: a **log of a customer tapping "book"** — does NOT change table status or reserve. Grows into real bookings later (will then carry a `user_id`). |
+
+### Decisions locked in (with why)
+- **`Table.status` is a column, not a table** — one current value per table; makes the atomic
+  claim (§5) a cheap single-row conditional `UPDATE`.
+- **`status` is an enum, not a boolean** — leaves room for `CLEARING` + ordering-app states (§4)
+  without changing the data's meaning.
+- **`StatusEvent` ships in v1** — near-zero cost now; history can't be backfilled later, and it's
+  the raw material for the analytics venues will *pay* for (§8.3).
+- **Staff↔Venue is many-to-many** — matches the multi-venue vision; avoids a painful migration if a
+  manager ever covers two venues.
+- **Customers are anonymous in v1** — see §3.3. Accounts arrive bundled with *real* booking.
+- **`Claim` exists but holds nothing in v1** — gives the concurrency logic something real to write
+  later and grows into real bookings; for now it's just an interest log.
+
+### Still open at the data-model level
+- Should `Claim` be in v1 at all, or added only when real booking lands? (Leaning: include a minimal
+  version — cheap, and it lets us measure tap-interest.)
+- Exact `source` values for `StatusEvent` (e.g. `staff_manual`, later `pos`, `system`).
+
+---
+
+## 12. Open Questions / To Discuss
 - Live-update mechanism (user's ideas).
 - Real booking approach (own system vs. external redirect).
 - What exact stats/management the Admin view needs.
