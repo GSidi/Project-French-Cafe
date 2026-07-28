@@ -1,0 +1,16 @@
+name: cafe
+services:
+  db:
+    image: postgres:16
+    container_name: cafe-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - cafe_pgdata:/var/lib/postgresql/data
+
+volumes:
+  cafe_pgdata:
