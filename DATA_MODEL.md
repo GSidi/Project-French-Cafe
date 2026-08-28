@@ -101,7 +101,7 @@ Staff and Admin accounts only. **No customer rows in v1.**
 |---|---|---|---|
 | id | BIGINT | PK, identity | |
 | email | TEXT | NOT NULL, UNIQUE | Login identity. |
-| hashed_pw | TEXT | NOT NULL | Never store plaintext; hash (e.g. bcrypt/argon2). |
+| hashed_password | TEXT | NOT NULL | Never store plaintext; hash (e.g. bcrypt/argon2). |
 | name | TEXT | | Display name. |
 | role | user_role | NOT NULL | ADMIN or STAFF. |
 | is_active | BOOLEAN | NOT NULL, default `true` | Disable without deleting. |
