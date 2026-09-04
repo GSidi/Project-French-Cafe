@@ -1,6 +1,7 @@
 ﻿"""All SQLAlchemy ORM models (see DATA_MODEL.md)."""
 from app.base import Base
-from sqlalchemy import BigInteger, Column, DateTime, Float, ForeignKey, Integer, String, Identity, Text, Boolean, func
+from sqlalchemy import BigInteger, Column, DateTime, Float, ForeignKey, Integer, String, Identity, Text, Boolean, func, \
+    SmallInteger, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 from enum import StrEnum
@@ -31,3 +32,22 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class TableStatus(StrEnum):
+    FREE = "FREE"
+    OCCUPIED = "OCCUPIED"
+
+
+class Table(Base):
+    __tablename__ = "tables"
+    __table_args__ = (
+        UniqueConstraint("venue_id", "label", name="uniq_tables_venue_label"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    venue_id: Mapped[int] = mapped_column(ForeignKey("venues.id"))
+    label: Mapped[str] = mapped_column(Text())
+    seats: Mapped[int] = mapped_column(SmallInteger(), server_default="2")
+    is_active: Mapped[bool] = mapped_column(server_default="true")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    pos_x: Mapped[int] = mapped_column(Integer(), server_default="0")
+    pos_y: Mapped[int] = mapped_column(Integer(), server_default="0")
+    status: Mapped[TableStatus] = mapped_column(SQLEnum(TableStatus, name="table_status"), server_default="FREE")

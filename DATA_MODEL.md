@@ -7,7 +7,10 @@
 > **How to use:** When adding or changing anything in the DB, update this file in the same change.
 > Keep it in sync with the actual migrations. PostgreSQL types/conventions throughout.
 >
-> **Status:** v1 first draft. **Last updated:** 2026-07-15
+> **Status:** v1 first draft. **Last updated:** 2026-09-04
+>
+> **Implemented so far:** `venues`, `users`, `tables` (+ enums `user_role`, `table_status`).
+> Everything below them is still design-only.
 
 ---
 
@@ -138,11 +141,14 @@ Grows into real bookings later (will then gain a `user_id` FK once customers hav
 ## Indexes (v1)
 
 ```sql
--- Fast "show me a venue's floor" (the hot customer read path).
-CREATE INDEX idx_tables_venue ON tables (venue_id);
-
--- One label per venue.
-CREATE UNIQUE INDEX uq_tables_venue_label ON tables (venue_id, label);
+-- One label per venue. Declared as a UNIQUE CONSTRAINT on the model, so Postgres
+-- creates the backing index itself.
+--
+-- Column order is deliberate: (venue_id, label) also serves the hot customer read
+-- path "show me a venue's floor" (WHERE venue_id = ?), because a btree can be
+-- searched by any leading prefix of its columns. A separate idx_tables_venue would
+-- be redundant -- pure write cost and disk for no extra query coverage.
+ALTER TABLE tables ADD CONSTRAINT uniq_tables_venue_label UNIQUE (venue_id, label);
 
 -- Analytics/audit reads: a table's history over time.
 CREATE INDEX idx_status_events_table_time ON status_events (table_id, created_at);
