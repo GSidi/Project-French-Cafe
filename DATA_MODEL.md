@@ -7,9 +7,10 @@
 > **How to use:** When adding or changing anything in the DB, update this file in the same change.
 > Keep it in sync with the actual migrations. PostgreSQL types/conventions throughout.
 >
-> **Status:** v1 first draft. **Last updated:** 2026-09-04
+> **Status:** v1 first draft. **Last updated:** 2026-09-08
 >
-> **Implemented so far:** `venues`, `users`, `tables` (+ enums `user_role`, `table_status`).
+> **Implemented so far:** `venues`, `users`, `tables`, `status_events`
+> (+ enums `user_role`, `table_status`, `status_source`).
 > Everything below them is still design-only.
 
 ---
@@ -33,8 +34,9 @@ CREATE TYPE table_status AS ENUM ('FREE', 'OCCUPIED');
 -- Future: ALTER TYPE table_status ADD VALUE 'CLEARING';  (Postgres supports adding enum values)
 
 -- Who/what caused a status change (for analytics + audit).
-CREATE TYPE status_source AS ENUM ('staff_manual', 'system');
--- Future: ADD VALUE 'pos'  (when ordering-app / POS integration drives status)
+-- Uppercase to match table_status / user_role -- all enum values in this schema are uppercase.
+CREATE TYPE status_source AS ENUM ('STAFF_MANUAL', 'SYSTEM');
+-- Future: ADD VALUE 'POS'  (when ordering-app / POS integration drives status)
 
 -- User roles. No CUSTOMER in v1 (customers are anonymous — PROJECT_BRIEF §3.3).
 CREATE TYPE user_role AS ENUM ('ADMIN', 'STAFF');
@@ -91,7 +93,7 @@ WHERE id = :id AND status = 'FREE';
 | old_status | table_status | | Null for the very first event, if any. |
 | new_status | table_status | NOT NULL | |
 | source | status_source | NOT NULL | What drove the change. |
-| changed_by | BIGINT | FK → users(id), nullable | Which staffer (null if `system`). |
+| changed_by | BIGINT | FK → users(id), nullable | Which staffer (null if `SYSTEM`). |
 | created_at | TIMESTAMPTZ | NOT NULL, default `now()` | The analytics time axis. |
 
 > This table is expected to be the largest over time. It powers venue analytics (§8.3),
@@ -176,3 +178,7 @@ venues 1───N tables 1───N status_events
 
 ## Change log
 - **2026-07-15** — v1 first draft created.
+- **2026-09-08** — `status_events` implemented (model + index `idx_status_events_table_time`),
+  along with the `status_source` enum. Enum values corrected to uppercase to match the code and
+  the other two enums. Shared `SQLEnum` objects (`table_status_enum`, `user_role_enum`) are now
+  defined once in `models.py` and reused across columns, so Alembic emits one `CREATE TYPE` each.
