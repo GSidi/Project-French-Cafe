@@ -150,13 +150,15 @@ Grows into real bookings later (will then gain a `user_id` FK once customers hav
 -- path "show me a venue's floor" (WHERE venue_id = ?), because a btree can be
 -- searched by any leading prefix of its columns. A separate idx_tables_venue would
 -- be redundant -- pure write cost and disk for no extra query coverage.
-ALTER TABLE tables ADD CONSTRAINT uniq_tables_venue_label UNIQUE (venue_id, label);
+ALTER TABLE tables ADD CONSTRAINT unique_tables_venue_label UNIQUE (venue_id, label);
 
 -- Analytics/audit reads: a table's history over time.
 CREATE INDEX idx_status_events_table_time ON status_events (table_id, created_at);
 
 -- No duplicate staff↔venue links.
-CREATE UNIQUE INDEX uq_staff_assignment ON staff_assignments (user_id, venue_id);
+-- Declared as a UNIQUE CONSTRAINT on the model, so Postgres creates the index itself.
+ALTER TABLE staff_assignments ADD CONSTRAINT unique_staff_assignments_user_venue
+    UNIQUE (user_id, venue_id);
 
 -- Tap-interest lookups per table.
 CREATE INDEX idx_claims_table ON claims (table_id);
@@ -182,3 +184,8 @@ venues 1───N tables 1───N status_events
   along with the `status_source` enum. Enum values corrected to uppercase to match the code and
   the other two enums. Shared `SQLEnum` objects (`table_status_enum`, `user_role_enum`) are now
   defined once in `models.py` and reused across columns, so Alembic emits one `CREATE TYPE` each.
+- **2026-09-15** — `staff_assignments` implemented (model + unique constraint). Adopted a single
+  naming convention for unique constraints: **`unique_<table>_<columns>`**. `uq_staff_assignment`
+  became `unique_staff_assignments_user_venue`, and the pre-existing `uniq_tables_venue_label`
+  became `unique_tables_venue_label` (renamed in-place via `ALTER TABLE ... RENAME CONSTRAINT`,
+  not dropped and recreated). Apply this convention to `claims` and everything after it.

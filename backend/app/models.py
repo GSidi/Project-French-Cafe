@@ -43,7 +43,7 @@ table_status_enum = SQLEnum(TableStatus, name="table_status")
 class Table(Base):
     __tablename__ = "tables"
     __table_args__ = (
-        UniqueConstraint("venue_id", "label", name="uniq_tables_venue_label"),
+        UniqueConstraint("venue_id", "label", name="unique_tables_venue_label"),
     )
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     venue_id: Mapped[int] = mapped_column(ForeignKey("venues.id"))
@@ -71,6 +71,17 @@ class StatusEvent(Base):
     new_status: Mapped[TableStatus] = mapped_column(table_status_enum)
     source: Mapped[StatusSource] = mapped_column(SQLEnum(StatusSource, name="status_source"))
     changed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StaffAssignment(Base):
+    __tablename__ = "staff_assignments"
+    __table_args__ = (
+        UniqueConstraint("user_id", "venue_id", name="unique_staff_assignments_user_venue"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    venue_id: Mapped[int] = mapped_column(ForeignKey("venues.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
