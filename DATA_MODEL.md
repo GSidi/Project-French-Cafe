@@ -189,3 +189,10 @@ venues 1───N tables 1───N status_events
   became `unique_staff_assignments_user_venue`, and the pre-existing `uniq_tables_venue_label`
   became `unique_tables_venue_label` (renamed in-place via `ALTER TABLE ... RENAME CONSTRAINT`,
   not dropped and recreated). Apply this convention to `claims` and everything after it.
+- **2026-09-22** — `claims` implemented (model + `claim_status` enum + `idx_claims_table`),
+  migration `e51e5adc6b8d`. **This completes the v1 schema — all six tables are now live and
+  migrated.** Downgrade/upgrade round trip verified clean. Confirmed as built: `claims` carries
+  no `user_id` (anonymous tap-interest log, as specified above) and `idx_claims_table` is a plain
+  index, not a unique constraint — many claims may point at one table. The migration's
+  `downgrade()` needed a hand-added `sa.Enum(name="claim_status").drop(op.get_bind())` after
+  `drop_table`; Alembic autogenerate creates enum types but never drops them.

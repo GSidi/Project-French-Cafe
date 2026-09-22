@@ -84,4 +84,19 @@ class StaffAssignment(Base):
     venue_id: Mapped[int] = mapped_column(ForeignKey("venues.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+class ClaimStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    RELEASED = "RELEASED"
+
+claim_status_enum = SQLEnum(ClaimStatus, name="claim_status")
+
+class Claim(Base):
+    __tablename__ = "claims"
+    __table_args__ = (
+        Index("idx_claims_table", "table_id"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    table_id: Mapped[int] = mapped_column(ForeignKey("tables.id"))
+    status: Mapped[ClaimStatus] = mapped_column(claim_status_enum, server_default="ACTIVE")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
