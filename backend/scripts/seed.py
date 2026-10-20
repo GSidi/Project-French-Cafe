@@ -1,9 +1,12 @@
 from app.database import SessionLocal
 from app.models import Venue, Table, TableStatus
+from sqlalchemy import text
 
 db = SessionLocal()
 
+
 try:
+    db.execute(text("TRUNCATE venues RESTART IDENTITY CASCADE"))
     VENUES = [
         {
             "name": "Bricks",
