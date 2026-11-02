@@ -4,8 +4,10 @@ from fastapi import FastAPI, Depends
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.config import settings
+from app.venues.router import router as venue_router
 
 app = FastAPI(title="French cafe ala Grecia")
+app.include_router(venue_router)
 
 
 @app.get("/health")
